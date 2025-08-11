@@ -1,0 +1,493 @@
+<!DOCTYPE html>  <html lang="fr">  
+<head>  
+<meta charset="utf-8"/>  
+<meta name="viewport" content="width=device-width,initial-scale=1"/>  
+<title>Draft Cube / Set MTG </title>  
+<style>  
+  :root{  
+    --bg:#0a0f1a;  
+    --panel-grad: linear-gradient(180deg, rgba(12,18,36,0.95), rgba(8,14,30,0.95));  
+    --muted:#9fb0ff;  
+    --accent:#6ea8ff;  
+  }  
+  html,body{height:100%;margin:0;font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;color:#e0e7ff;}  
+  /* background art element (behind everything) */  
+  .bg-art { position:fixed; inset:0; z-index:-2; background-position:center; background-size:cover; filter: blur(2px) saturate(.9) ; transition:background-image .45s ease-in-out; }  
+  /* subtle overlay so UI is readable */  
+ .menu h1{ margin:0 0 10px 0; color:var(--accent); font-size:20px; }
+  <label for="cubeListInput">Ou coller une liste de cartes (1 par ligne)</label>
+<textarea id="cubeListInput" rows="6" placeholder="Écris ou colle les noms des cartes, une par ligne..."></textarea>
+<button id="btnLoadList" style="margin-top:8px;">Charger la liste</button>
+label{ display:block; font-size:13px; color:var(--muted); margin-top:10px; }
+<label for="cubeListInput">Ou coller une liste de cartes (1 par ligne)</label>
+<textarea id="cubeListInput" rows="6" placeholder="Écris ou colle les noms des cartes, une par ligne..."></textarea>
+<button id="btnLoadList" style="margin-top:8px;">Charger la liste</button>
+  .row { display:flex; gap:8px; align-items:center; }
+select, input[type="number"], input[type="file"] {
+width:100%; padding:8px 10px; border-radius:8px; border:none; background:#172040; color:#dfeaff; font-size:14px;
+}
+.iconBox img{ width:100%; height:100%; object-fit:contain; }
+
+button { margin-top:12px; padding:10px 12px; border-radius:10px; border:none; background:linear-gradient(180deg,#5f97ff,#3b6be6); color:white; font-weight:600; cursor:pointer; }
+button.ghost { background:transparent; border:1px solid rgba(255,255,255,0.06); color:var(--muted); padding:8px 10px; border-radius:8px; cursor:pointer; margin-left:8px; }
+
+.draftArea {
+flex:1; background:linear-gradient(180deg, rgba(6,10,22,0.55), rgba(4,8,18,0.55)); border-radius:12px; padding:14px; min-height:520px;
+box-shadow:0 8px 30px rgba(0,0,0,0.55);
+}
+
+.status { display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:10px; }
+.status .big{ font-weight:700; color:var(--accent); }
+.pack, .picks { display:flex; flex-wrap:wrap; gap:10px; padding:8px 6px; min-height:120px; }
+.card { width:130px; background:linear-gradient(180deg, rgba(10,14,30,0.8), rgba(8,12,26,0.6)); border-radius:10px; padding:8px; text-align:center; border:1px solid rgba(255,255,255,0.03); }
+.card img{ width:100%; height:170px; object-fit:cover; border-radius:8px; display:block; margin-bottom:6px; }
+.meta{ font-size:13px; color:var(--muted); height:36px; overflow:hidden; }
+
+.log { margin-top:12px; color:var(--muted); font-size:13px; max-height:160px; overflow:auto; white-space:pre-line; }
+@media (max-width:960px){ .container{flex-direction:column;padding:12px;} .menu{width:100%;} }
+</style>
+
+</head>  
+<body>  
+  <div class="bg-art" id="bgArt"></div>  
+  <div class="overlay"></div>    <div class="container">  
+    <div class="menu" id="menuDiv">  
+      <h1>Draft — Choix du set</h1>  <label for="editionSelect">Set (icône + nom)</label>  
+  <div class="row">  
+    <div class="iconBox" id="iconBox"><img id="iconImg" src="" alt=""></div>  
+    <select id="editionSelect" aria-label="Choisir le set"></select>  
+  </div>  
+
+  <label for="nbBoosters">Nombre de boosters (tours)</label>  
+  <input type="number" id="nbBoosters" value="3" min="1" max="9">  
+
+  <label for="nbBots">Nombre de bots</label>  
+  <input type="number" id="nbBots" value="2" min="0" max="11">  
+
+  <label for="cubeUpload">Charger un cube perso (JSON)</label>  
+  <input id="cubeUpload" type="file" accept=".json">  
+
+  <div style="display:flex; gap:8px; margin-top:12px;">  
+    <button id="btnStart">Commencer le draft</button>  
+    <button class="ghost" id="btnReset">Réinitialiser</button>  
+  </div>  
+
+  <div id="cardCount" style="margin-top:10px; color:var(--muted); font-size:13px;"></div>  
+</div>  
+
+<div class="draftArea">  
+  <div class="status">  
+    <div>  
+      <div class="big" id="statusTitle">Prêt</div>  
+      <div id="statusInfo" style="color:var(--muted); font-size:13px;">Choisis un set et lance le draft.</div>  
+    </div>  
+    <div>  
+      <button class="ghost" id="backBtn" style="display:none;">Retour au menu</button>  
+    </div>  
+  </div>  
+
+  <h2 style="margin:8px 0 6px 0; color:var(--muted)">Pack en cours</h2>  
+  <div id="pack" class="pack"></div>  
+
+  <h2 style="margin:12px 0 6px 0; color:var(--muted)">Mes picks</h2>  
+  <div id="picks" class="picks"></div>  
+
+  <div class="log" id="log"></div>  
+</div>
+
+  </div>  <script>  
+/* =============  
+   Emblematic card per set (lowercase set code keys).  
+   Extend as needed. Only used to fetch art for the background.  
+   ============= */  
+const setCardMap = {  
+  "lea":"Black Lotus",  
+  "leb":"Sol Ring",  
+  "3ed":"Mana crypt",  
+  "arn":"Library of Alexandria",  
+  "nph":"Elesh Norn, Grand Cenobite",  
+  "znr":"Omnath, Locus of Creation",  
+  "khm":"Alrund's Epiphany",  
+  "bro":"Urza, Lord High Artificer",  
+  "one":"Elesh Norn, Mother of Machines",  
+  "eld":"Lucky Clover",  
+  "isd":"Snapcaster Mage",  
+  "bfz":"Ulamog, the Ceaseless Hunger",  
+  "kld":"Karn, Scion of Urza",  
+  "m21":"Teferi, Hero of Dominaria",  
+  "znd":"Omnath" // example fallback  
+};  
+  
+/* helper to fetch Scryfall named card JSON and extract an image URL (art crop preferred) */  
+async function fetchArtImageUrl(cardName){  
+  try{  
+    const res = await fetch(`https://api.scryfall.com/cards/named?exact=${encodeURIComponent(cardName)}&format=json`);  
+    if(!res.ok) throw new Error('not found');  
+    const data = await res.json();  
+    // prefer art_crop or large or normal; handle card_faces  
+    if(data.image_uris && data.image_uris.art_crop) return data.image_uris.art_crop;  
+    if(data.image_uris && data.image_uris.large) return data.image_uris.large;  
+    if(data.image_uris && data.image_uris.normal) return data.image_uris.normal;  
+    if(data.card_faces && data.card_faces[0] && data.card_faces[0].image_uris){  
+      return data.card_faces[0].image_uris.art_crop || data.card_faces[0].image_uris.large || data.card_faces[0].image_uris.normal;  
+    }  
+  }catch(e){  
+    console.warn('fetchArtImageUrl failed for', cardName, e);  
+  }  
+  return null;  
+}  
+  
+/* DOM refs */  
+const editionSelect = document.getElementById('editionSelect');  
+const iconImg = document.getElementById('iconImg');  
+const bgArt = document.getElementById('bgArt');  
+  
+const nbBoostersInput = document.getElementById('nbBoosters');  
+const nbBotsInput = document.getElementById('nbBots');  
+const cubeUpload = document.getElementById('cubeUpload');  
+const btnStart = document.getElementById('btnStart');  
+const btnReset = document.getElementById('btnReset');  
+const backBtn = document.getElementById('backBtn');  
+  
+const packDiv = document.getElementById('pack');  
+const picksDiv = document.getElementById('picks');  
+const logDiv = document.getElementById('log');  
+const cardCount = document.getElementById('cardCount');  
+const statusTitle = document.getElementById('statusTitle');  
+const statusInfo = document.getElementById('statusInfo');  
+const menuDiv = document.getElementById('menuDiv');  
+const draftPanel = document.querySelector('.draftArea');  
+  
+let allCards = [];   // currently loaded card pool  
+let boosters = [];   // boosters per player in current round  
+let picks = [];      // player's picked cards  
+let bots = 0;  
+let playersCount = 1;  
+let nbBoostersTotal = 1;  
+let currentRound = 1;  
+  
+/* load all sets and populate select (chronological order) */  
+async function loadAllSets(){  
+  try{  
+    const res = await fetch('https://api.scryfall.com/sets');  
+    const data = await res.json();  
+    const sets = data.data.filter(s => s.set_type==='core' || s.set_type==='expansion')  
+                .sort((a,b)=> new Date(a.released_at) - new Date(b.released_at));  
+    editionSelect.innerHTML = '';  
+    const empty = document.createElement('option');  
+    empty.value = '';  
+    empty.textContent = '-- Choisir un set --';  
+    editionSelect.appendChild(empty);  
+    sets.forEach(s=>{  
+      const opt = document.createElement('option');  
+      opt.value = s.code; // s.code is lowercase  
+      opt.textContent = `${s.name} (${s.code.toUpperCase()})`;  
+      opt.dataset.icon = s.icon_svg_uri || '';  
+      editionSelect.appendChild(opt);  
+    });  
+  }catch(e){  
+    editionSelect.innerHTML = '<option value="">Erreur chargement sets</option>';  
+    console.error('loadAllSets', e);  
+  }  
+}  
+  
+/* update preview when set changes: set icon + background art (fetch art for emblematic card) */  
+let lastBgCache = {}; // cache cardName->imageUrl  
+async function updateSetPreview(){  
+  const code = editionSelect.value;  
+  const opt = editionSelect.selectedOptions[0];  
+  if(opt && opt.dataset.icon) iconImg.src = opt.dataset.icon; else iconImg.src = '';  
+  if(!code){  
+    bgArt.style.backgroundImage = '';  
+    return;  
+  }  
+  const emblem = setCardMap[code.toLowerCase()];  
+  if(emblem){  
+    // use cache if present  
+    if(lastBgCache[emblem]){  
+      bgArt.style.backgroundImage = `url("${lastBgCache[emblem]}")`;  
+      return;  
+    }  
+    // fetch art URL JSON -> extract image url  
+    const url = await fetchArtImageUrl(emblem);  
+    if(url){  
+      lastBgCache[emblem] = url;  
+      bgArt.style.backgroundImage = `url("${url}")`;  
+      return;  
+    }  
+  }  
+  // fallback: use option icon as background (SVG), or clear  
+  if(opt && opt.dataset.icon){  
+    bgArt.style.backgroundImage = `url("${opt.dataset.icon}")`;  
+  } else {  
+    bgArt.style.backgroundImage = '';  
+  }  
+}  
+  
+/* load all cards for a set (only booster-eligible cards) */  
+async function loadSetCards(setCode){  
+  allCards = [];  
+  try{  
+    let page = 1;  
+    while(true){  
+      const res = await fetch(`https://api.scryfall.com/cards/search?order=set&q=e%3A${encodeURIComponent(setCode)}&unique=prints&page=${page}`);  
+      const data = await res.json();  
+      if(!data || !data.data) break;  
+      allCards.push(...data.data);  
+      if(!data.has_more) break;  
+      page++;  
+    }  
+    // keep only booster-eligible and map  
+    allCards = allCards.filter(c=>c.booster).map(c=>({  
+      name: c.name,  
+      image: c.image_uris?.normal || (c.card_faces?.[0]?.image_uris?.normal || ''),  
+      rarity: c.rarity  
+    }));  
+    cardCount.textContent = `Set ${setCode.toUpperCase()} chargé : ${allCards.length} cartes`;  
+  }catch(e){  
+    console.error('loadSetCards', e);  
+    cardCount.textContent = 'Erreur chargement set';  
+  }  
+}  
+  
+/* cube upload */  
+cubeUpload.addEventListener('change', e => {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+
+  reader.onload = ev => {
+    try {
+      const data = JSON.parse(ev.target.result);
+
+      if (!Array.isArray(data)) {
+        cardCount.textContent = 'Le fichier JSON doit être un tableau de cartes.';
+        return;
+      }
+
+      // On crée allCards en nettoyant et uniformisant les données
+      allCards = data.map(card => {
+        return {
+          name: card.name || card.title || 'Carte inconnue',
+          image: card.image || (card.image_uris && card.image_uris.normal) || '',
+          rarity: card.rarity || 'common'
+        };
+      });
+
+      cardCount.textContent = `Cube chargé : ${allCards.length} cartes`;
+      bgArt.style.backgroundImage = '';
+      iconImg.src = '';
+
+      // On remet la sélection set à vide car on charge un cube perso
+      editionSelect.value = '';
+      updateSetPreview();
+
+    } catch (error) {
+      console.error('Erreur lecture cube JSON :', error);
+      cardCount.textContent = 'Erreur lecture fichier JSON.';
+    }
+  };
+
+  reader.readAsText(file);
+});
+  
+/* helper: pick n random w/o replacement from array (returns new array) */  
+function pickWithoutReplacement(arr,n){  
+  const pool = arr.slice();  
+  const res = [];  
+  for(let i=0;i<n && pool.length>0;i++){  
+    const idx = Math.floor(Math.random()*pool.length);  
+    res.push(pool.splice(idx,1)[0]);  
+  }  
+  return res;  
+}  
+  
+  
+/* generate balanced booster: 1 rare/mythic (1/8 mythic), 3 uncommons, 11 commons */  
+function generateBalancedBooster(){  
+  const mythics = allCards.filter(c=>c.rarity==='mythic');  
+  const rares = allCards.filter(c=>c.rarity==='rare');  
+  const uncos = allCards.filter(c=>c.rarity==='uncommon');  
+  const commons = allCards.filter(c=>c.rarity==='common');  
+  
+  const pack = [];  
+  // rare/mythic slot  
+  if(Math.random() < 1/8 && mythics.length>0) pack.push(mythics[Math.floor(Math.random()*mythics.length)]);  
+  else if(rares.length>0) pack.push(rares[Math.floor(Math.random()*rares.length)]);  
+  else if(mythics.length>0) pack.push(mythics[Math.floor(Math.random()*mythics.length)]);  
+  
+  // uncommons  
+  pack.push(...pickWithoutReplacement(uncos,3));  
+  // commons  
+  pack.push(...pickWithoutReplacement(commons,11));  
+  
+  // if pack too small, fill random  
+  while(pack.length < 15 && allCards.length>0){  
+    pack.push(allCards[Math.floor(Math.random()*allCards.length)]);  
+  }  
+  return pack;  
+}  
+  
+/* Setup a round: create one booster per player (playersCount = bots+1) */  
+function setupRound(){  
+  boosters = [];  
+  playersCount = bots + 1;  
+  for(let p=0;p<playersCount;p++){  
+    boosters[p] = generateBalancedBooster();  
+  }  
+  statusTitle.textContent = `Round ${currentRound} / ${nbBoostersTotal}`;  
+  statusInfo.textContent = `Joueurs: ${playersCount} — Cartes dans ton pack : ${boosters[0]?.length || 0}`;  
+  renderPack();  
+  renderPicks();  
+}  
+  
+/* render functions (presentation unchanged) */  
+function renderPack(){  
+  packDiv.innerHTML = '';  
+  const pack = boosters[0] || [];  
+  pack.forEach((c, idx)=>{  
+    const d = document.createElement('div');  
+    d.className = 'card';  
+    d.innerHTML = `${c.image ? `<img src="${c.image}" alt="${c.name}">` : ''}<div class="meta">${c.name}</div><div style="margin-top:6px;"><button onclick="pickCard(${idx})">Choisir</button></div>`;  
+    packDiv.appendChild(d);  
+  });  
+  statusInfo.textContent = `Round ${currentRound}/${nbBoostersTotal} — Cartes restantes dans ton pack : ${boosters[0]?.length || 0}`;  
+}  
+function renderPicks(){  
+  picksDiv.innerHTML = '';  
+  picks.forEach(c=>{  
+    const d = document.createElement('div');  
+    d.className = 'card';  
+    d.innerHTML = `${c.image ? `<img src="${c.image}" alt="${c.name}">` : ''}<div class="meta">${c.name}</div>`;  
+    picksDiv.appendChild(d);  
+  });  
+}  
+  
+/* pick logic preserved (unchanged behaviour) */  
+window.pickCard = function(idx){  
+  if(!boosters[0] || boosters[0].length === 0) return;  
+  // player pick  
+  const card = boosters[0].splice(idx,1)[0];  
+  picks.push(card);  
+  logDiv.textContent = `${new Date().toLocaleTimeString()} — Tu as choisi : ${card.name}\n${logDiv.textContent}`;  
+  
+  // bots pick from their packs  
+  for(let b=1;b<playersCount;b++){  
+    const botPack = boosters[b];  
+    if(botPack && botPack.length>0){  
+      const botIdx = Math.floor(Math.random()*botPack.length);  
+      const botCard = botPack.splice(botIdx,1)[0];  
+      logDiv.textContent = `${new Date().toLocaleTimeString()} — Bot ${b} a choisi : ${botCard.name}\n${logDiv.textContent}`;  
+    }  
+  }  
+  
+  // rotate boosters left (first goes to last) so packs pass  
+  if(playersCount > 1){  
+    const first = boosters.shift();  
+    boosters.push(first);  
+  }  
+  
+  // if no cards left anywhere -> round finished  
+  const anyLeft = boosters.some(p=>p && p.length>0);  
+  if(!anyLeft){  
+    if(currentRound < nbBoostersTotal){  
+      currentRound++;  
+      logDiv.textContent = `${new Date().toLocaleTimeString()} — Round ${currentRound-1} terminé. Génération round ${currentRound}...\n${logDiv.textContent}`;  
+      setupRound();  
+      return;  
+    } else {  
+      logDiv.textContent = `${new Date().toLocaleTimeString()} — Draft terminé !\n${logDiv.textContent}`;  
+      statusTitle.textContent = 'Draft terminé';  
+      statusInfo.textContent = `Tu as drafté ${picks.length} cartes.`;  
+      packDiv.innerHTML = '';  
+      backBtn.style.display = 'inline-block';  
+      return;  
+    }  
+  }  
+  
+  // render current user's pack & picks  
+  renderPack();  
+  renderPicks();  
+};  
+  
+/* Start draft */  
+btnStart.addEventListener('click', async ()=>{  
+  picks = [];  
+  boosters = [];  
+  logDiv.textContent = '';  
+  picksDiv.innerHTML = '';  
+  packDiv.innerHTML = '';  
+  statusTitle.textContent = 'Chargement...';  
+  
+  const setCode = editionSelect.value;  
+  nbBoostersTotal = Math.max(1, parseInt(nbBoostersInput.value) || 1);  
+  bots = Math.max(0, parseInt(nbBotsInput.value) || 0);  
+  playersCount = bots + 1;  
+  currentRound = 1;  
+  
+  if(setCode){  
+    await loadSetCards(setCode);  
+    // fetch and apply emblematic art (via named endpoint) safely  
+    const emblem = setCardMap[setCode.toLowerCase()];  
+    if(emblem){  
+      const artUrl = await fetchArtImageUrl(emblem);  
+      if(artUrl){  
+        bgArt.style.backgroundImage = `url("${artUrl}")`;  
+      } else {  
+        // fallback to option icon if present  
+        const opt = editionSelect.selectedOptions[0];  
+        if(opt && opt.dataset.icon) bgArt.style.backgroundImage = `url("${opt.dataset.icon}")`;  
+      }  
+    } else {  
+      const opt = editionSelect.selectedOptions[0];  
+      if(opt && opt.dataset.icon) bgArt.style.backgroundImage = `url("${opt.dataset.icon}")`;  
+    }  
+    // icon preview  
+    const opt = editionSelect.selectedOptions[0];  
+    iconImg.src = opt?.dataset?.icon || '';  
+    cardCount.textContent = `Set ${setCode.toUpperCase()} chargé : ${allCards.length} cartes`;  
+  } else {  
+    if(allCards.length === 0){  
+      alert('Choisis un set ou charge un cube JSON.');  
+      statusTitle.textContent = 'Prêt';  
+      return;  
+    }  
+  }  
+  
+  setupRound();  
+  menuDiv.style.display = 'none';  
+  draftPanel.style.display = 'block';  
+  backBtn.style.display = 'inline-block';  
+});  
+  
+/* Reset/back handlers (unchanged) */  
+btnReset.addEventListener('click', ()=>{  
+  boosters = []; picks = []; allCards = [];  
+  packDiv.innerHTML = ''; picksDiv.innerHTML = ''; logDiv.textContent = '';  
+  cardCount.textContent = ''; bgArt.style.backgroundImage = ''; iconImg.src = ''; editionSelect.value = '';  
+  statusTitle.textContent = 'Prêt'; statusInfo.textContent = 'Choisis un set et commence le draft';  
+  menuDiv.style.display = 'block'; draftPanel.style.display = 'block'; backBtn.style.display = 'none';  
+});  
+  
+backBtn.addEventListener('click', ()=>{  
+  menuDiv.style.display = 'block';  
+  draftPanel.style.display = 'block';  
+  packDiv.innerHTML = '';  
+  picksDiv.innerHTML = '';  
+  logDiv.textContent = '';  
+  bgArt.style.backgroundImage = '';  
+  iconImg.src = '';  
+  statusTitle.textContent = 'Prêt';  
+  statusInfo.textContent = 'Choisis un set et commence le draft';  
+});  
+  
+/* update preview when selection changes */  
+editionSelect.addEventListener('change', updateSetPreview);  
+  
+/* init */  
+loadAllSets();  
+updateSetPreview();  
+</script>  </body>  
+</html>  
+ 
