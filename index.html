@@ -100,25 +100,153 @@ box-shadow:0 8px 30px rgba(0,0,0,0.55);
    Emblematic card per set (lowercase set code keys).  
    Extend as needed. Only used to fetch art for the background.  
    ============= */  
-const setCardMap = {  
-  "lea":"Black Lotus",  
-  "leb":"Sol Ring",  
-  "3ed":"Mana crypt",  
-  "arn":"Library of Alexandria",  
-  "nph":"Elesh Norn, Grand Cenobite",  
-  "znr":"Omnath, Locus of Creation",  
-  "akh":"Nicol Bolas, god-pharaoh",
-  "kdh":"The world tree",
-  "bro":"Urza, Lord High Artificer",  
-  "one":"Elesh Norn, Mother of Machines",  
-  "eld":"Lucky Clover",  
-  "isd":"Snapcaster Mage",  
-  "bfz":"Ulamog, the Ceaseless Hunger",  
-  "kld":"Karn, Scion of Urza",  
-  "m21":"Teferi, Hero of Dominaria",  
-  "znd":"Omnath" // example fallback  
-};  
-  
+
+  const setCardMap = {
+  /* 1993-1999 classics */
+  "lea": "Black Lotus",
+  "leb": "Sol Ring",
+  "arn": "Library of Alexandria",
+  "2ed": "Black Lotus",
+  "atq": "Mishra's Workshop",
+  "3ed": "Mana Crypt",
+  "leg": "The Tabernacle at Pendrell Vale",
+  "dark": "Sengir Vampire",
+  "fem": "Urabrask the Hidden",            // choix emblématique pour Fallen Empires
+  "4ed": "Serra Angel",
+  "ice": "Jester's Cap",
+  "chr": "Sol Ring",
+  "hml": "Erhnam Djinn",
+  "all": "Giant Growth",
+  "mir": "Shivan Dragon",
+  "vis": "Psychatog",
+  "5ed": "Serra Angel",
+  "wth": "Weatherlight",
+  "tmp": "Tempest Efreet",
+  "sth": "Gaea's Cradle",
+  "exo": "Shivan Dragon",
+  "usg": "Gifts Ungiven",
+  "ulg": "Gaea's Cradle",
+  "uds": "Karn, Silver Golem",
+  "6ed": "Serra Angel",
+
+  /* 1999-2006 */
+  "mmq": "Tolarian Academy",
+  "nem": "Kiki-Jiki, Mirror Breaker",
+  "pcy": "Prophet of Kruphix",
+  "inv": "Invasion Planechase",            // fallback generic
+  "pls": "Planar Chaos Emblem",            // generic
+  "7ed": "Serra Angel",
+  "apc": "Apocalypse",                     // generic
+  "ody": "Ertai, the Corrupted",
+  "tor": "Torment",                        // generic
+  "jud": "Gaea's Cradle",
+  "ons": "Gideon Jura",
+  "lgn": "Phyrexian Negator",
+  "scg": "Scourge of the Throne",          // generic
+  "8ed": "Serra Angel",
+
+  /* 2003-2008 Mirrodin, Kamigawa, etc. */
+  "mrd": "Sword of Feast and Famine",
+  "dst": "Darksteel Colossus",
+  "5dn": "Masticore",
+  "chk": "Jukai Naturalist",               // representative Kamigawa
+  "bok": "Keiga, the Tide Star",           // representative
+  "sok": "Kiki-Jiki, Mirror Breaker",
+  "9ed": "Serra Angel",
+  "rav": "Niv-Mizzet, Parun",              // tu l'as demandé (Ravnica)
+  "gpt": "Grove of the Burnwillows",
+  "dis": "Angel of Despair",
+  "csp": "Hooting Mandrills",              // Coldsnap emblem-like (hibou/plumegivre)
+  "tsp": "Time Spiral",
+  "plc": "Grove of the Burnwillows",
+  "fut": "Future Sight Card",              // generic
+  "10e": "Serra Angel",
+  "lrw": "Emrakul, the Aeons Torn",
+  "mor": "Cryptic Command",
+  "shm": "Dark Confidant",
+  "eve": "Glen Elendra",
+  "ala": "Nicol Bolas, the Ravager",
+  "con": "Maelstrom Pulse",
+  "arb": "Solemn Simulacrum",
+  "m10": "Serra Angel",
+
+  /* Zendikar era */
+  "zen": "Eye of Ugin",
+  "wwk": "Gideon Jura",
+  "roe": "Ulamog, the Infinite Gyre",
+  "m11": "Snapcaster Mage",
+  "som": "Sword of Feast and Famine",
+  "mbs": "Daybreak Coronet",
+  "nph": "Elesh Norn, Grand Cenobite",
+  "m12": "Jace, the Mind Sculptor",
+  "isd": "Snapcaster Mage",
+  "dka": "Liliana of the Veil",
+  "avr": "Avacyn, Angel of Hope",
+  "m13": "Elspeth, Sun's Champion",
+  "rtr": "Domri Rade",
+  "gtc": "Selesnya Guildgate",             // generic
+  "dgm": "Azorius Signet",
+  "mma": "Force of Will",
+  "m14": "Serra Angel",
+
+  /* Theros onwards */
+  "ths": "Heliod, God of the Sun",
+  "bng": "Xenagos, God of Revels",          // tu l'as noté
+  "jou": "Eidolon of the Great Revel",
+  "cns": "Grinning Ignus",
+  "m15": "Liliana of the Veil",
+  "ktk": "Anafenza, the Foremost",
+  "frf": "Sarkhan Unbroken",
+  "dtk": "Ugin, the Spirit Dragon",
+  "mm2": "Tarmogoyf",
+  "ori": "Gideon, Ally of Zendikar",
+  "bfz": "Ulamog, the Ceaseless Hunger",
+  "ogw": "Ugin's Nexus",
+  "soi": "Tamiyo, Field Researcher",
+  "emn": "Liliana, the Last Hope",
+  "kld": "Karn, Scion of Urza",
+  "aer": "Saheeli Rai",
+  "akh": "Nicol Bolas, the God-Pharaoh",    // tu l'as noté (akh)
+  "hou": "Nicol Bolas, the Ravager",        // related to Hour of Devastation
+  "xln": "Vraska, Relic Seeker",
+  "rix": "Gishath, Sun's Avatar",           // tu mentioned Ghishat
+  "dom": "Karn, Scion of Urza",
+  "m19": "Gideon, Ally of Zendikar",
+  "grn": "Niv-Mizzet, Parun",
+  "rna": "Boros Reckoner",
+  "war": "Nicol Bolas, God-Pharaoh",
+  "mh1": "Force of Negation",
+  "m20": "Hydroid Krasis",
+  "eld": "Lucky Clover",
+  "thb": "Keranos, God of Storms",
+
+  /* Ikoria / 2020s */
+  "iko": "Keruga, the Macrosage",
+  "jmp": "Jumpstart Card",                  // generic
+  "m21": "Teferi, Hero of Dominaria",
+  "2xm": "Consecrated Sphinx",
+  "znr": "Omnath, Locus of Creation",
+  "cnr": "Atraxa, Grand Unifier",
+  "khm": "Alrund's Epiphany",
+  "tsr": "Time Spiral Remastered Card",     // generic fallback
+  "stx": "Archmage Emeritus",
+  "mh2": "Void Winnower",
+  "afr": "Vorinclex, Monstrous Raider",     // you wrote vrondiss -> vorinclex
+  "mid": "Arnie, Innistrad Icon",           // generic Innistrad Midnight Hunt emblem
+  "vow": "Lurrus of the Dream-Den",         // Crimson Vow notable card
+  "neo": "Kaito Shizuki",
+  "snc": "Sen Triplets",                    // Streets of New Capenna emblem-like
+  "2x2": "Double Masters Card",             // generic
+  "dmu": "Sheoldred, the Apocalypse",       // you noted sheoldred
+  "bro": "Urza, Lord High Artificer",       // you noted Urza
+  "j22": "Jumpstart 2022 Card",
+  "dmr": "Teferi, Temporal Pilgrim",        // Dominaria Remastered emblem-like
+  "one": "Elesh Norn, Mother of Machines",  // you noted
+  "mom": "Archangel Elspeth",                // March of the Machine emblem-like
+  "mat": "March of the Machine Aftermath Card",
+  "woe": "Wilds of Eldraine Card",
+  "lci": "The Lost Caverns of Ixalan Card"
+};
 /* helper to fetch Scryfall named card JSON and extract an image URL (art crop preferred) */  
 async function fetchArtImageUrl(cardName){  
   try{  
