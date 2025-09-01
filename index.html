@@ -64,9 +64,8 @@ box-shadow:0 8px 30px rgba(0,0,0,0.55);
   <label for="nbBots">Nombre de bots</label>  
   <input type="number" id="nbBots" value="2" min="0" max="11">  
 
-  <label for="cubeUpload">Charger un cube perso (JSON)</label>  
-  <input id="cubeUpload" type="file" accept=".json">  
-
+  <label for="cubeUpload">Charger un cube perso</label>  
+  <button><a href="https://emilionschmauch-sketch.github.io/Cube-draft/"</a>Cliquer ici pour jouer avec un cube perso</button>
   <div style="display:flex; gap:8px; margin-top:12px;">  
     <button id="btnStart">Commencer le draft</button>  
     <button class="ghost" id="btnReset">Réinitialiser</button>  
@@ -385,48 +384,6 @@ async function loadSetCards(setCode){
     cardCount.textContent = 'Erreur chargement set';  
   }  
 }  
-  
-/* cube upload */  
-cubeUpload.addEventListener('change', e => {
-  const file = e.target.files[0];
-  if (!file) return;
-
-  const reader = new FileReader();
-
-  reader.onload = ev => {
-    try {
-      const data = JSON.parse(ev.target.result);
-
-      if (!Array.isArray(data)) {
-        cardCount.textContent = 'Le fichier JSON doit être un tableau de cartes.';
-        return;
-      }
-
-      // On crée allCards en nettoyant et uniformisant les données
-      allCards = data.map(card => {
-        return {
-          name: card.name || card.title || 'Carte inconnue',
-          image: card.image || (card.image_uris && card.image_uris.normal) || '',
-          rarity: card.rarity || 'common'
-        };
-      });
-
-      cardCount.textContent = `Cube chargé : ${allCards.length} cartes`;
-      bgArt.style.backgroundImage = '';
-      iconImg.src = '';
-
-      // On remet la sélection set à vide car on charge un cube perso
-      editionSelect.value = '';
-      updateSetPreview();
-
-    } catch (error) {
-      console.error('Erreur lecture cube JSON :', error);
-      cardCount.textContent = 'Erreur lecture fichier JSON.';
-    }
-  };
-
-  reader.readAsText(file);
-});
   
 /* helper: pick n random w/o replacement from array (returns new array) */  
 function pickWithoutReplacement(arr,n){  
